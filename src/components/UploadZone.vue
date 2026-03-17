@@ -27,14 +27,6 @@
     class="sr-only"
     @change="onFileChange"
   />
-
-  <p class="iphone-tip">
-    IPHONE TIP: FOR FASTER LOADING, GO TO
-    <span class="tip-bold">SETTINGS → CAMERA → FORMATS</span>
-    AND SELECT
-    <span class="tip-bold">MOST COMPATIBLE</span>
-    BEFORE RECORDING. KEEP YOUR SCREEN ON WHILE PROCESSING.
-  </p>
 </template>
 
 <script setup>
@@ -116,24 +108,5 @@ function onDrop(e) {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
-}
-
-/* Mobile-only iPhone tip */
-.iphone-tip {
-  display: none;
-  font-size: 6px;
-  color: rgba(162, 213, 198, 0.45);
-  line-height: 2.4;
-  text-align: center;
-  margin-top: 10px;
-  padding: 0 4px;
-}
-
-.tip-bold {
-  color: var(--vs-teal);
-}
-
-@media (max-width: 540px) {
-  .iphone-tip { display: block; }
 }
 </style>
