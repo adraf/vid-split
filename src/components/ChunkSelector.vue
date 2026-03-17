@@ -23,15 +23,16 @@
         @change="onSelect"
       >
         <template #value="{ value }">
-          <span v-if="value">
-            {{ labelFor(value) }}
-          </span>
+          <div v-if="value" class="selected-value">
+            <img :src="iconFor(value)" class="option-icon-img" :alt="labelFor(value)" />
+            <span>{{ labelFor(value) }}</span>
+          </div>
           <span v-else class="placeholder-text">SELECT CHUNK SIZE</span>
         </template>
 
         <template #option="{ option }">
           <div class="option-row">
-            <span class="option-icon">{{ option.icon }}</span>
+            <img :src="option.icon" class="option-icon-img" :alt="option.label" />
             <span class="option-label">{{ option.label }}</span>
             <span class="option-time">{{ option.timeLabel }}</span>
           </div>
@@ -67,16 +68,16 @@ const emit = defineEmits(['update:chunkSec'])
 
 // ── Platform definitions ─────────────────────────────────────────────────────
 const PLATFORMS = [
-  { label: 'iMessage',            seconds: 240, icon: '💬', timeLabel: '4:00' },
-  { label: 'Instagram Reels',     seconds: 180, icon: '📸', timeLabel: '3:00' },
-  { label: 'YouTube Shorts',      seconds: 180, icon: '▶️',  timeLabel: '3:00' },
-  { label: 'Facebook Reels',      seconds: 180, icon: '👥', timeLabel: '3:00' },
-  { label: 'X / Twitter',         seconds: 140, icon: '🐦', timeLabel: '2:20' },
-  { label: 'TikTok',              seconds: 60,  icon: '🎵', timeLabel: '1:00' },
-  { label: 'Instagram Stories',   seconds: 60,  icon: '🔵', timeLabel: '1:00' },
-  { label: 'WhatsApp Status',     seconds: 60,  icon: '💚', timeLabel: '1:00' },
-  { label: 'Snapchat',            seconds: 60,  icon: '👻', timeLabel: '1:00' },
-  { label: 'Facebook Stories',    seconds: 15,  icon: '👤', timeLabel: '0:15' },
+  { label: 'iMessage',          seconds: 240, icon: '/icons8/icons8-imessage.png',   timeLabel: '4:00' },
+  { label: 'Instagram Reels',   seconds: 180, icon: '/icons8/icons8-instagram.png',  timeLabel: '3:00' },
+  { label: 'YouTube Shorts',    seconds: 180, icon: '/icons8/icons8-youtube.png',    timeLabel: '3:00' },
+  { label: 'Facebook Reels',    seconds: 180, icon: '/icons8/icons8-facebook.png',   timeLabel: '3:00' },
+  { label: 'X / Twitter',       seconds: 140, icon: '/icons8/icons8-x.png',          timeLabel: '2:20' },
+  { label: 'TikTok',            seconds: 60,  icon: '/icons8/icons8-tiktok.png',     timeLabel: '1:00' },
+  { label: 'Instagram Stories', seconds: 60,  icon: '/icons8/icons8-instagram.png',  timeLabel: '1:00' },
+  { label: 'WhatsApp Status',   seconds: 60,  icon: '/icons8/icons8-whatsapp.png',   timeLabel: '1:00' },
+  { label: 'Snapchat',          seconds: 60,  icon: '/icons8/icons8-snapchat.png',   timeLabel: '1:00' },
+  { label: 'Facebook Stories',  seconds: 15,  icon: '/icons8/icons8-facebook.png',   timeLabel: '0:15' },
 ]
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -112,7 +113,12 @@ const chunks = computed(() => {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function labelFor(seconds) {
   const p = PLATFORMS.find(p => p.seconds === seconds)
-  return p ? `${p.icon}  ${p.label}  —  ${p.timeLabel}` : `${formatTime(seconds)}`
+  return p ? `${p.label}  —  ${p.timeLabel}` : formatTime(seconds)
+}
+
+function iconFor(seconds) {
+  const p = PLATFORMS.find(p => p.seconds === seconds)
+  return p ? p.icon : ''
 }
 
 // ── Smart default when duration is detected ──────────────────────────────────
@@ -242,11 +248,26 @@ function onSelect() {
 .option-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
 }
 
-.option-icon  { flex-shrink: 0; font-size: 10px; }
+.selected-value {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.option-icon-img {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  object-fit: contain;
+  /* Invert black icons to show as mint/white on dark bg */
+  filter: invert(1) sepia(1) saturate(2) hue-rotate(100deg) brightness(1.2);
+  opacity: 0.85;
+}
+
 .option-label { flex: 1; }
 .option-time  {
   color: var(--vs-mint);
