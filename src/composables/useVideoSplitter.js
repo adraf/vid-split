@@ -51,6 +51,15 @@ export function useVideoSplitter() {
     error.value  = null
     status.value = 'loading'
 
+    // Acquire WakeLock so the screen stays on during processing.
+    // Safari iOS 16.4+ supports this — silently ignored on older versions.
+    let wakeLock = null
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock = await navigator.wakeLock.request('screen')
+      }
+    } catch (_) { /* WakeLock unavailable — continue without it */ }
+
     try {
       setProgress(5, 'LOADING FFMPEG ENGINE...')
       const ff = await ensureFFmpeg()
@@ -72,14 +81,14 @@ export function useVideoSplitter() {
       const chunks   = calcChunks(duration, chunkSec)
       const baseName = file.name.replace(/\.[^.]+$/, '')
 
-      setProgress(28, `SPLITTING INTO ${chunks.length} PART${chunks.length !== 1 ? 'S' : ''}...`)
+      setProgress(28, `COMPRESSING + SPLITTING INTO ${chunks.length} PART${chunks.length !== 1 ? 'S' : ''}...`)
 
       for (const chunk of chunks) {
         const outName  = `out_part${chunk.index}.mp4`
         const pctStart = 28 + ((chunk.index - 1) / chunks.length) * 65
         const pctEnd   = 28 + (chunk.index       / chunks.length) * 65
 
-        setProgress(Math.round(pctStart), `CUTTING PART ${chunk.index} OF ${chunks.length}...`)
+        setProgress(Math.round(pctStart), `COMPRESSING PART ${chunk.index} OF ${chunks.length}...`)
 
         const onProgress = ({ progress }) => {
           setProgress(Math.round(pctStart + progress * (pctEnd - pctStart)), null)
@@ -90,7 +99,13 @@ export function useVideoSplitter() {
           '-ss',  String(chunk.start),
           '-i',   inputFilename,
           '-t',   String(chunk.duration),
-          '-c',   'copy',
+          // Re-encode to H.264 1080p — safe on all devices, fixes HEVC memory crash
+          '-vf',  'scale=w=1920:h=1080:force_original_aspect_ratio=decrease:flags=lanczos',
+          '-c:v', 'libx264',
+          '-preset', 'ultrafast',   // fastest encode, still fine quality for sharing
+          '-crf',    '23',          // quality factor: 18=high, 23=good, 28=smaller file
+          '-c:a', 'aac',
+          '-b:a', '128k',
           '-movflags', '+faststart',
           '-avoid_negative_ts', 'make_zero',
           outName,
@@ -117,6 +132,9 @@ export function useVideoSplitter() {
       console.error('[VidSplit]', err)
       error.value  = err.message || String(err)
       status.value = 'error'
+    } finally {
+      // Always release WakeLock when done, whether success or failure
+      try { wakeLock?.release() } catch (_) {}
     }
   }
 

@@ -1,7 +1,7 @@
 <template>
   <Transition name="fade">
     <div v-if="visible" class="progress-wrap">
-      <p class="progress-label">&gt; PROCESSING</p>
+      <p class="progress-label">&gt; COMPRESSING + SPLITTING</p>
 
       <ProgressBar
         :value="pct"
