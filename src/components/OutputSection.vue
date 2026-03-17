@@ -21,6 +21,17 @@
 
       <Divider />
 
+      <!-- Mobile tip — only shown on small screens -->
+      <div class="mobile-tip">
+        <p class="tip-line">
+          <span class="tip-highlight">SAVE ALL CLIPS</span>
+          ADDS ALL VIDEOS TO YOUR DOWNLOADS FOLDER.
+        </p>
+        <p class="tip-line">
+          TAP <span class="tip-highlight">SAVE</span> ON AN INDIVIDUAL CLIP TO BRING UP THE SHARE MENU — FROM THERE YOU CAN SAVE DIRECTLY TO YOUR PHOTOS / CAMERA ROLL.
+        </p>
+      </div>
+
       <!-- 2-column square grid -->
       <TransitionGroup name="card-list" tag="div" class="segments-grid">
         <SegmentCard
@@ -145,7 +156,30 @@ const segmentsWithIndex = computed(() =>
   gap: 12px;
 }
 
-/* TransitionGroup */
+/* ── Mobile tip ── */
+.mobile-tip {
+  display: none;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-left: 3px solid rgba(162, 213, 198, 0.3);
+  background: rgba(162, 213, 198, 0.03);
+}
+
+.tip-line {
+  font-size: 6px;
+  color: rgba(162, 213, 198, 0.55);
+  line-height: 2.4;
+  margin-bottom: 8px;
+}
+.tip-line:last-child { margin-bottom: 0; }
+
+.tip-highlight {
+  color: var(--vs-mint);
+}
+
+@media (max-width: 540px) {
+  .mobile-tip { display: block; }
+}
 .card-list-enter-active { transition: opacity 0.3s ease, transform 0.3s ease; }
 .card-list-enter-from   { opacity: 0; transform: translateY(12px); }
 
