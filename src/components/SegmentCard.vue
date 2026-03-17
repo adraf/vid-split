@@ -5,24 +5,26 @@
         <p class="part-label">PART {{ segment.index }}</p>
         <p class="file-name">{{ segment.name }}</p>
         <div class="meta">
-          <span>⏱ {{ formatTime(segment.duration) }}</span>
-          <span>💾 {{ formatBytes(segment.size) }}</span>
+          <span class="meta-item">
+            <img :src="'/icons8/icons8-time.png'" class="meta-icon" alt="duration" />
+            {{ formatTime(segment.duration) }}
+          </span>
+          <span class="meta-item">
+            <img :src="'/icons8/icons8-file.png'" class="meta-icon" alt="size" />
+            {{ formatBytes(segment.size) }}
+          </span>
         </div>
-        <Button
-          label="⬇  SAVE"
-          severity="secondary"
-          outlined
-          class="save-btn"
-          @click="$emit('save')"
-        />
+        <button class="save-btn" @click="$emit('save')">
+          <img :src="'/icons8/icons8-save.png'" class="btn-icon" alt="" />
+          SAVE
+        </button>
       </div>
     </template>
   </Card>
 </template>
 
 <script setup>
-import Card   from 'primevue/card'
-import Button from 'primevue/button'
+import Card from 'primevue/card'
 import { formatTime, formatBytes } from '../utils/format'
 
 defineProps({
@@ -109,19 +111,57 @@ defineEmits(['save'])
   line-height: 1.6;
 }
 
+.meta-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.meta-icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: invert(1) sepia(1) saturate(2) hue-rotate(100deg) brightness(1.2);
+  opacity: 0.8;
+}
+
 .save-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   width: 100%;
-  font-size: 7px !important;
-  letter-spacing: 0.5px;
+  padding: 9px 12px;
   margin-top: 4px;
-  color: rgba(207, 255, 226, 0.55) !important;
-  border-color: rgba(207, 255, 226, 0.35) !important;
-  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease !important;
+  font-family: var(--vs-font);
+  font-size: 7px;
+  letter-spacing: 0.5px;
+  background: transparent;
+  color: rgba(207, 255, 226, 0.55);
+  border: 2px solid rgba(207, 255, 226, 0.35);
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.save-btn .btn-icon {
+  width: 13px;
+  height: 13px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: invert(1) sepia(1) saturate(2) hue-rotate(100deg) brightness(1.2);
+  opacity: 0.55;
+  transition: opacity 0.2s;
 }
 
 .save-btn:hover {
-  color: var(--vs-mint) !important;
-  border-color: var(--vs-mint) !important;
-  background: rgba(207, 255, 226, 0.08) !important;
+  color: var(--vs-mint);
+  border-color: var(--vs-mint);
+  background: rgba(207, 255, 226, 0.08);
+}
+
+.save-btn:hover .btn-icon {
+  opacity: 1;
 }
 </style>

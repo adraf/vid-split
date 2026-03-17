@@ -9,19 +9,14 @@
 
       <!-- Action buttons pinned at top -->
       <div class="top-actions">
-        <Button
-          label="⬇  SAVE ALL CLIPS"
-          severity="primary"
-          class="save-all-btn"
-          @click="$emit('save-all')"
-        />
-        <Button
-          label="↺  SPLIT ANOTHER"
-          severity="secondary"
-          outlined
-          class="reset-btn"
-          @click="$emit('reset')"
-        />
+        <button class="top-btn save-all-btn" @click="$emit('save-all')">
+          <img :src="'/icons8/icons8-save.png'" class="btn-icon" alt="" />
+          SAVE ALL CLIPS
+        </button>
+        <button class="top-btn reset-btn" @click="$emit('reset')">
+          <img :src="'/icons8/icons8-restart.png'" class="btn-icon" alt="" />
+          SPLIT ANOTHER
+        </button>
       </div>
 
       <Divider />
@@ -42,7 +37,6 @@
 
 <script setup>
 import { computed } from 'vue'
-import Button      from 'primevue/button'
 import Divider     from 'primevue/divider'
 import SegmentCard from './SegmentCard.vue'
 
@@ -81,31 +75,65 @@ const segmentsWithIndex = computed(() =>
   margin-bottom: 4px;
 }
 
-.save-all-btn {
+.top-btn {
   flex: 1;
-  font-size: 9px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 10px;
+  font-family: var(--vs-font);
+  font-size: 9px;
   letter-spacing: 1px;
-  box-shadow: 4px 4px 0 var(--vs-teal) !important;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.08s, box-shadow 0.08s, background 0.15s, color 0.15s, border-color 0.15s;
 }
-.save-all-btn:hover:not(:disabled) {
-  transform: translate(-2px, -2px) !important;
-  box-shadow: 6px 6px 0 var(--vs-teal) !important;
+
+.btn-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.save-all-btn {
+  background: var(--vs-mint);
+  color: #000000;
+  box-shadow: 4px 4px 0 var(--vs-teal);
+}
+.save-all-btn .btn-icon {
+  /* black icon on mint bg — no filter needed */
+}
+.save-all-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--vs-teal);
+}
+.save-all-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--vs-teal);
 }
 
 .reset-btn {
-  flex: 1;
-  font-size: 9px !important;
-  letter-spacing: 1px;
-  color: rgba(162, 213, 198, 0.5) !important;
-  border-color: rgba(162, 213, 198, 0.35) !important;
-  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease !important;
+  background: transparent;
+  color: rgba(162, 213, 198, 0.5);
+  border: 2px solid rgba(162, 213, 198, 0.35) !important;
+  box-shadow: 3px 3px 0 rgba(162, 213, 198, 0.2);
+}
+.reset-btn .btn-icon {
+  filter: invert(1) sepia(1) saturate(2) hue-rotate(100deg) brightness(1.2);
+  opacity: 0.5;
+  transition: opacity 0.15s;
 }
 .reset-btn:hover {
-  color: var(--vs-teal) !important;
+  color: var(--vs-teal);
   border-color: var(--vs-teal) !important;
-  background: rgba(162, 213, 198, 0.08) !important;
-  transform: translate(-1px, -1px) !important;
-  box-shadow: 3px 3px 0 rgba(162, 213, 198, 0.3) !important;
+  background: rgba(162, 213, 198, 0.08);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 rgba(162, 213, 198, 0.3);
+}
+.reset-btn:hover .btn-icon {
+  opacity: 1;
 }
 
 /* ── Grid: 2-col squares on desktop, 1-col short rectangles on mobile ── */

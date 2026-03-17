@@ -11,7 +11,7 @@
     @dragleave.prevent="isDragging = false"
     @drop.prevent="onDrop"
   >
-    <span class="upload-icon" aria-hidden="true">📼</span>
+    <img :src="'/icons8/icons8-vhs.png'" class="upload-icon" alt="Upload video" aria-hidden="true" />
     <p class="upload-text">DROP VIDEO HERE</p>
     <p class="upload-sub">
       MP4 &nbsp;·&nbsp; MOV &nbsp;·&nbsp; HEVC &nbsp;·&nbsp; M4V &nbsp;·&nbsp; AND MORE<br />
@@ -76,10 +76,14 @@ function onDrop(e) {
 }
 
 .upload-icon {
-  font-size: 38px;
+  width: 48px;
+  height: 48px;
   display: block;
-  margin-bottom: 18px;
-  filter: drop-shadow(0 0 8px rgba(207, 255, 226, 0.4));
+  margin: 0 auto 18px;
+  object-fit: contain;
+  filter: invert(1) sepia(1) saturate(2) hue-rotate(100deg) brightness(1.2);
+  opacity: 0.9;
+  filter: drop-shadow(0 0 8px rgba(207, 255, 226, 0.4)) invert(1) sepia(1) saturate(2) hue-rotate(100deg) brightness(1.2);
 }
 
 .upload-text {
