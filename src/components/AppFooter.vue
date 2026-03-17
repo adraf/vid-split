@@ -1,9 +1,18 @@
 <template>
   <footer class="footer">
     <Divider />
-    <p>&gt; ALL PROCESSING HAPPENS LOCALLY IN YOUR BROWSER</p>
-    <p>&gt; YOUR VIDEO NEVER LEAVES YOUR DEVICE</p>
-    <p>&gt; VID SPLIT v1.0 &nbsp;//&nbsp; PIXEL POWER_</p>
+    <p class="footer-line">&gt; ALL PROCESSING HAPPENS LOCALLY IN YOUR BROWSER</p>
+    <p class="footer-line">&gt; YOUR VIDEO NEVER LEAVES YOUR DEVICE</p>
+    <p class="footer-line">&gt; VID SPLIT v1.0</p>
+    <p class="footer-line">
+      &gt; MADE BY
+      <a
+        href="https://www.adamraffertywebdesign.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="footer-link"
+      >ADAM RAFFERTY WEB DESIGN</a>
+    </p>
   </footer>
 </template>
 
@@ -16,7 +25,27 @@ import Divider from 'primevue/divider'
   text-align: center;
   padding: 28px 0 24px;
   font-size: 6px;
-  color: rgba(162, 213, 198, 0.28);
   line-height: 3;
+}
+
+.footer-line {
+  color: rgba(162, 213, 198, 0.28);
+  transition: color 0.2s ease;
+}
+
+.footer-line:hover {
+  color: rgba(162, 213, 198, 0.6);
+}
+
+.footer-link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  font-family: var(--vs-font);
+}
+
+.footer-link:hover {
+  color: var(--vs-mint);
 }
 </style>
