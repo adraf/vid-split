@@ -17,7 +17,7 @@
         v-model="selected"
         :options="availableOptions"
         option-label="label"
-        option-value="seconds"
+        option-value="id"
         :placeholder="'SELECT CHUNK SIZE'"
         class="platform-select"
         @change="onSelect"
@@ -68,16 +68,16 @@ const emit = defineEmits(['update:chunkSec'])
 
 // ── Platform definitions ─────────────────────────────────────────────────────
 const PLATFORMS = [
-  { label: 'iMessage',          seconds: 240, icon: '/icons8/icons8-imessage.png',   timeLabel: '4:00' },
-  { label: 'Instagram Reels',   seconds: 180, icon: '/icons8/icons8-instagram.png',  timeLabel: '3:00' },
-  { label: 'YouTube Shorts',    seconds: 180, icon: '/icons8/icons8-youtube.png',    timeLabel: '3:00' },
-  { label: 'Facebook Reels',    seconds: 180, icon: '/icons8/icons8-facebook.png',   timeLabel: '3:00' },
-  { label: 'X / Twitter',       seconds: 140, icon: '/icons8/icons8-x.png',          timeLabel: '2:20' },
-  { label: 'TikTok',            seconds: 60,  icon: '/icons8/icons8-tiktok.png',     timeLabel: '1:00' },
-  { label: 'Instagram Stories', seconds: 60,  icon: '/icons8/icons8-instagram.png',  timeLabel: '1:00' },
-  { label: 'WhatsApp Status',   seconds: 60,  icon: '/icons8/icons8-whatsapp.png',   timeLabel: '1:00' },
-  { label: 'Snapchat',          seconds: 60,  icon: '/icons8/icons8-snapchat.png',   timeLabel: '1:00' },
-  { label: 'Facebook Stories',  seconds: 15,  icon: '/icons8/icons8-facebook.png',   timeLabel: '0:15' },
+  { id: 'imessage',          label: 'iMessage',          seconds: 240, icon: '/icons8/icons8-imessage.png',  timeLabel: '4:00' },
+  { id: 'instagram-reels',   label: 'Instagram Reels',   seconds: 180, icon: '/icons8/icons8-instagram.png', timeLabel: '3:00' },
+  { id: 'youtube-shorts',    label: 'YouTube Shorts',    seconds: 180, icon: '/icons8/icons8-youtube.png',   timeLabel: '3:00' },
+  { id: 'facebook-reels',    label: 'Facebook Reels',    seconds: 180, icon: '/icons8/icons8-facebook.png',  timeLabel: '3:00' },
+  { id: 'x-twitter',         label: 'X / Twitter',       seconds: 140, icon: '/icons8/icons8-x.png',         timeLabel: '2:20' },
+  { id: 'tiktok',            label: 'TikTok',            seconds: 60,  icon: '/icons8/icons8-tiktok.png',    timeLabel: '1:00' },
+  { id: 'instagram-stories', label: 'Instagram Stories', seconds: 60,  icon: '/icons8/icons8-instagram.png', timeLabel: '1:00' },
+  { id: 'whatsapp',          label: 'WhatsApp Status',   seconds: 60,  icon: '/icons8/icons8-whatsapp.png',  timeLabel: '1:00' },
+  { id: 'snapchat',          label: 'Snapchat',          seconds: 60,  icon: '/icons8/icons8-snapchat.png',  timeLabel: '1:00' },
+  { id: 'facebook-stories',  label: 'Facebook Stories',  seconds: 15,  icon: '/icons8/icons8-facebook.png',  timeLabel: '0:15' },
 ]
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -107,18 +107,27 @@ const contextMessage = computed(() => {
 
 const chunks = computed(() => {
   if (!selected.value || !props.duration) return []
-  return calcChunks(props.duration, selected.value)
+  return calcChunks(props.duration, secondsFor(selected.value))
 })
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function labelFor(seconds) {
-  const p = PLATFORMS.find(p => p.seconds === seconds)
-  return p ? `${p.label}  —  ${p.timeLabel}` : formatTime(seconds)
+function platformById(id) {
+  return PLATFORMS.find(p => p.id === id)
 }
 
-function iconFor(seconds) {
-  const p = PLATFORMS.find(p => p.seconds === seconds)
+function labelFor(id) {
+  const p = platformById(id)
+  return p ? `${p.label}  —  ${p.timeLabel}` : id
+}
+
+function iconFor(id) {
+  const p = platformById(id)
   return p ? p.icon : ''
+}
+
+function secondsFor(id) {
+  const p = platformById(id)
+  return p ? p.seconds : 240
 }
 
 // ── Smart default when duration is detected ──────────────────────────────────
@@ -126,20 +135,20 @@ watch(
   () => props.duration,
   (dur) => {
     if (!dur) return
-    // iMessage if >=4min, else pick the largest platform that fits
+    // iMessage if >=4min, else pick the largest platform chunk that fits
     if (dur >= 240) {
-      selected.value = 240
+      selected.value = 'imessage'
     } else {
       const best = availableOptions.value[0]
-      selected.value = best ? best.seconds : availableOptions.value[availableOptions.value.length - 1]?.seconds ?? 60
+      selected.value = best ? best.id : 'tiktok'
     }
-    emit('update:chunkSec', selected.value)
+    emit('update:chunkSec', secondsFor(selected.value))
   },
   { immediate: true },
 )
 
 function onSelect() {
-  emit('update:chunkSec', selected.value)
+  emit('update:chunkSec', secondsFor(selected.value))
 }
 </script>
 
