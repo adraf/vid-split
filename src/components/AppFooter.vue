@@ -13,6 +13,15 @@
         class="footer-link"
       >ADAM RAFFERTY WEB DESIGN</a>
     </p>
+    <p class="footer-line">
+      &gt; ICONS BY
+      <a
+        href="https://icons8.com/icons"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="footer-link"
+      >ICONS8</a>
+    </p>
   </footer>
 </template>
 
