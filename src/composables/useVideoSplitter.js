@@ -3,7 +3,8 @@ import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import { calcChunks, delay } from '../utils/format'
 
-const CHUNK_SEC   = 240 // 4 minutes
+export const DEFAULT_CHUNK_SEC = 240 // iMessage 4 min default
+
 const FFMPEG_BASE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm'
 
 // Singleton — keeps the FFmpeg instance alive across re-renders
@@ -44,7 +45,8 @@ export function useVideoSplitter() {
     return ffmpegInstance
   }
 
-  async function split(file) {
+  // chunkSec is now passed in at call time so the UI can drive it
+  async function split(file, chunkSec = DEFAULT_CHUNK_SEC) {
     reset()
     error.value  = null
     status.value = 'loading'
@@ -67,7 +69,7 @@ export function useVideoSplitter() {
       }
 
       status.value   = 'processing'
-      const chunks   = calcChunks(duration, CHUNK_SEC)
+      const chunks   = calcChunks(duration, chunkSec)
       const baseName = file.name.replace(/\.[^.]+$/, '')
 
       setProgress(28, `SPLITTING INTO ${chunks.length} PART${chunks.length !== 1 ? 'S' : ''}...`)
@@ -152,6 +154,5 @@ export function useVideoSplitter() {
     downloadSegment,
     downloadAll,
     reset,
-    CHUNK_SEC,
   }
 }

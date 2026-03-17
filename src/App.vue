@@ -15,8 +15,15 @@
         v-if="currentFile"
         :file="currentFile"
         :duration="duration"
-        :chunk-sec="CHUNK_SEC"
+        :chunk-sec="chunkSec"
         :style="{ opacity: isProcessing ? 0.4 : 1, transition: 'opacity 0.3s' }"
+      />
+
+      <!-- Platform / chunk size selector -->
+      <ChunkSelector
+        :show="!!currentFile && !isProcessing && status !== 'done'"
+        :duration="duration"
+        @update:chunk-sec="chunkSec = $event"
       />
 
       <!-- Error display -->
@@ -25,7 +32,7 @@
       <!-- Split CTA -->
       <SplitButton
         v-if="!isProcessing && status !== 'done'"
-        :disabled="!currentFile"
+        :disabled="!currentFile || !chunkSec"
         @click="startSplit"
       />
 
@@ -71,20 +78,21 @@ import Button from 'primevue/button'
 import Toast  from 'primevue/toast'
 
 import { useVideoSplitter } from './composables/useVideoSplitter'
-import AppHeader     from './components/AppHeader.vue'
-import AppFooter     from './components/AppFooter.vue'
-import UploadZone    from './components/UploadZone.vue'
-import VideoInfo     from './components/VideoInfo.vue'
-import ErrorBox      from './components/ErrorBox.vue'
-import SplitButton   from './components/SplitButton.vue'
-import ProgressBar   from './components/ProgressBar.vue'
-import OutputSection from './components/OutputSection.vue'
+import { DEFAULT_CHUNK_SEC } from './composables/useVideoSplitter'
+import AppHeader      from './components/AppHeader.vue'
+import AppFooter      from './components/AppFooter.vue'
+import UploadZone     from './components/UploadZone.vue'
+import VideoInfo      from './components/VideoInfo.vue'
+import ChunkSelector  from './components/ChunkSelector.vue'
+import ErrorBox       from './components/ErrorBox.vue'
+import SplitButton    from './components/SplitButton.vue'
+import ProgressBar    from './components/ProgressBar.vue'
+import OutputSection  from './components/OutputSection.vue'
 
 // ── Composable ───────────────────────────────────────────────────────────────
 const {
   status, progressPct, progressMsg, error, segments,
   split, downloadSegment, downloadAll, reset,
-  CHUNK_SEC,
 } = useVideoSplitter()
 
 const toast = useToast()
@@ -92,6 +100,7 @@ const toast = useToast()
 // ── Local state ──────────────────────────────────────────────────────────────
 const currentFile = ref(null)
 const duration    = ref(null)
+const chunkSec    = ref(DEFAULT_CHUNK_SEC)
 
 const isProcessing = computed(() =>
   status.value === 'loading' || status.value === 'processing'
@@ -101,9 +110,10 @@ const isProcessing = computed(() =>
 async function onFileSelected(file) {
   currentFile.value = file
   duration.value    = null
+  chunkSec.value    = DEFAULT_CHUNK_SEC
   reset()
 
-  // Pre-read duration for the chunk preview badges
+  // Pre-read duration for the chunk preview + selector
   const v   = document.createElement('video')
   v.preload = 'metadata'
   const url = URL.createObjectURL(file)
@@ -114,7 +124,7 @@ async function onFileSelected(file) {
 
 async function startSplit() {
   if (!currentFile.value) return
-  await split(currentFile.value)
+  await split(currentFile.value, chunkSec.value)
 
   if (status.value === 'done') {
     toast.add({
@@ -140,6 +150,7 @@ function resetAll() {
   reset()
   currentFile.value = null
   duration.value    = null
+  chunkSec.value    = DEFAULT_CHUNK_SEC
 }
 </script>
 
@@ -158,6 +169,15 @@ function resetAll() {
   margin: 10px 0;
   font-size: 9px !important;
   letter-spacing: 1px;
+  color: rgba(162, 213, 198, 0.5) !important;
+  border-color: rgba(162, 213, 198, 0.35) !important;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease !important;
+}
+
+.reset-btn:hover {
+  color: var(--vs-teal) !important;
+  border-color: var(--vs-teal) !important;
+  background: rgba(162, 213, 198, 0.08) !important;
 }
 
 .fade-enter-active,
