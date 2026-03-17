@@ -18,8 +18,6 @@
         :options="availableOptions"
         option-label="label"
         option-value="seconds"
-        option-group-label="group"
-        option-group-children="items"
         :placeholder="'SELECT CHUNK SIZE'"
         class="platform-select"
         @change="onSelect"
