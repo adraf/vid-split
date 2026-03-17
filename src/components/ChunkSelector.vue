@@ -53,30 +53,36 @@
       <!-- Custom time picker — shown when "custom" is selected -->
       <Transition name="fade">
         <div v-if="selected === 'custom'" class="custom-picker">
-          <p class="custom-label">&gt; ENTER CUSTOM CHUNK LENGTH</p>
+          <p class="custom-label">&gt; SELECT CUSTOM CHUNK LENGTH</p>
           <div class="time-inputs">
             <div class="time-field">
               <label class="field-label">MINS</label>
-              <input
+              <select
                 v-model.number="customMins"
-                type="number"
-                min="0"
-                :max="maxCustomMins"
-                class="time-input"
-                @input="onCustomChange"
-              />
+                class="time-select"
+                @change="onCustomChange"
+              >
+                <option
+                  v-for="m in minsOptions"
+                  :key="m"
+                  :value="m"
+                >{{ String(m).padStart(2, '0') }}</option>
+              </select>
             </div>
             <span class="time-sep">:</span>
             <div class="time-field">
               <label class="field-label">SECS</label>
-              <input
+              <select
                 v-model.number="customSecs"
-                type="number"
-                min="0"
-                max="59"
-                class="time-input"
-                @input="onCustomChange"
-              />
+                class="time-select"
+                @change="onCustomChange"
+              >
+                <option
+                  v-for="s in secsOptions"
+                  :key="s"
+                  :value="s"
+                >{{ String(s).padStart(2, '0') }}</option>
+              </select>
             </div>
             <span v-if="customError" class="custom-error">{{ customError }}</span>
           </div>
@@ -163,6 +169,22 @@ const contextMessage = computed(() => {
 const maxCustomMins = computed(() =>
   props.duration ? Math.floor(props.duration / 60) : 99
 )
+
+// Generate minute options: 0 up to maxCustomMins
+const minsOptions = computed(() => {
+  const max = maxCustomMins.value
+  return Array.from({ length: max + 1 }, (_, i) => i)
+})
+
+// Generate seconds options: 0–59, but if mins == maxCustomMins
+// cap secs to just below the remaining fractional seconds
+const secsOptions = computed(() => {
+  if (!props.duration) return Array.from({ length: 60 }, (_, i) => i)
+  const maxSec = customMins.value >= maxCustomMins.value
+    ? Math.max(0, Math.floor(props.duration % 60) - 1)
+    : 59
+  return Array.from({ length: maxSec + 1 }, (_, i) => i)
+})
 
 const activeChunkSec = computed(() => {
   if (selected.value === 'custom') {
@@ -412,9 +434,9 @@ function emitCurrent() {
   letter-spacing: 1px;
 }
 
-.time-input {
+.time-select {
   width: 64px;
-  padding: 8px 10px;
+  padding: 8px 6px;
   font-family: var(--vs-font);
   font-size: 10px;
   color: var(--vs-mint);
@@ -422,17 +444,21 @@ function emitCurrent() {
   border: 2px solid rgba(162, 213, 198, 0.4);
   border-radius: 0;
   text-align: center;
+  cursor: pointer;
   transition: border-color 0.2s;
-  -moz-appearance: textfield;
-}
-.time-input::-webkit-outer-spin-button,
-.time-input::-webkit-inner-spin-button {
+  /* Remove default arrow on desktop */
   -webkit-appearance: none;
-  margin: 0;
+  -moz-appearance: none;
+  appearance: none;
 }
-.time-input:focus {
+.time-select:focus {
   outline: none;
   border-color: var(--vs-mint);
+}
+.time-select option {
+  background: #050505;
+  color: var(--vs-mint);
+  font-family: var(--vs-font);
 }
 
 .time-sep {
@@ -494,7 +520,7 @@ function emitCurrent() {
   }
   .option-icon-img,
   .option-icon-placeholder { width: 14px; height: 14px; }
-  .time-input { width: 54px; font-size: 9px; }
+  .time-select { width: 54px; font-size: 9px; }
 }
 
 /* Transitions */
