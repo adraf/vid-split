@@ -28,7 +28,7 @@
           ADDS ALL VIDEOS TO YOUR DOWNLOADS FOLDER.
         </p>
         <p class="tip-line">
-          TAP <span class="tip-highlight">SAVE</span> ON AN INDIVIDUAL CLIP TO BRING UP THE SHARE MENU — FROM THERE YOU CAN SAVE DIRECTLY TO YOUR PHOTOS / CAMERA ROLL.
+          TAP <span class="tip-highlight">SAVE</span> ON AN INDIVIDUAL CLIP TO BRING UP THE SHARE MENU — FROM THERE YOU CAN SAVE DIRECTLY TO YOUR PHOTOS.
         </p>
       </div>
 
