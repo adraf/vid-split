@@ -62,11 +62,13 @@ const segmentsWithIndex = computed(() =>
   display: flex;
   align-items: center;
   gap: 10px;
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 .tick { color: var(--vs-teal); flex-shrink: 0; }
+
+@media (max-width: 540px) {
+  .output-title { font-size: 6px; gap: 6px; }
+}
 
 /* ── Top action buttons ── */
 .top-actions {
