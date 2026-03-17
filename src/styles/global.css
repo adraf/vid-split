@@ -1,0 +1,188 @@
+/* ─── Brand tokens (also available to PrimeVue via the theme preset) ─────── */
+:root {
+  --vs-black:  #000000;
+  --vs-mint:   #CFFFE2;
+  --vs-teal:   #A2D5C6;
+  --vs-white:  #F6F6F6;
+  --vs-error:  #ff7070;
+  --vs-font:   'Press Start 2P', monospace;
+}
+
+/* ─── Reset ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  background: var(--vs-black);
+  color: var(--vs-mint);
+  font-family: var(--vs-font);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* CRT scanlines overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Dot-grid background */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(162, 213, 198, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(162, 213, 198, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#app { position: relative; z-index: 1; }
+
+/* ─── Force Press Start 2P onto ALL PrimeVue internals ───────────────────── */
+.p-button,
+.p-button-label,
+.p-progressbar-label,
+.p-card-title,
+.p-card-body,
+.p-message,
+.p-message-text,
+.p-tag,
+.p-tag-label,
+.p-toast-message-text,
+.p-toast-summary,
+.p-toast-detail {
+  font-family: var(--vs-font) !important;
+}
+
+/* ─── PrimeVue Button — pixel shadow treatment ───────────────────────────── */
+.p-button {
+  border-radius: 0 !important;
+  letter-spacing: 0.5px;
+  transition: transform 0.08s ease, box-shadow 0.08s ease !important;
+  width: 100%;
+  justify-content: center;
+}
+
+/* Primary button */
+.p-button-primary:not(.p-button-outlined):not(.p-button-text) {
+  box-shadow: 4px 4px 0 var(--vs-teal) !important;
+}
+.p-button-primary:not(.p-button-outlined):not(.p-button-text):not(:disabled):hover {
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 6px 6px 0 var(--vs-teal) !important;
+}
+.p-button-primary:not(.p-button-outlined):not(.p-button-text):not(:disabled):active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 2px 2px 0 var(--vs-teal) !important;
+}
+
+/* Secondary / outlined button */
+.p-button-secondary,
+.p-button-outlined {
+  box-shadow: 3px 3px 0 rgba(162,213,198,0.3) !important;
+}
+.p-button-secondary:not(:disabled):hover,
+.p-button-outlined:not(:disabled):hover {
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 4px 4px 0 rgba(162,213,198,0.3) !important;
+}
+.p-button-secondary:not(:disabled):active,
+.p-button-outlined:not(:disabled):active {
+  transform: translate(1px, 1px) !important;
+  box-shadow: 2px 2px 0 rgba(162,213,198,0.3) !important;
+}
+
+.p-button:disabled { opacity: 0.35 !important; }
+
+/* ─── PrimeVue ProgressBar ───────────────────────────────────────────────── */
+.p-progressbar {
+  border-radius: 0 !important;
+  border: 2px solid var(--vs-teal) !important;
+  background: rgba(0,0,0,0.6) !important;
+  height: 1.125rem !important;
+}
+.p-progressbar-value {
+  border-radius: 0 !important;
+  background: linear-gradient(90deg, var(--vs-teal) 0%, var(--vs-mint) 100%) !important;
+  position: relative;
+  transition: width 0.4s ease !important;
+}
+/* Blinking cursor on fill edge */
+.p-progressbar-value::after {
+  content: '';
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--vs-white);
+  animation: vs-blink 0.5s infinite;
+}
+@keyframes vs-blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
+
+.p-progressbar-label { display: none !important; }
+
+/* ─── PrimeVue Card ──────────────────────────────────────────────────────── */
+.p-card {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: rgba(162, 213, 198, 0.03) !important;
+  border: 2px solid rgba(162, 213, 198, 0.3);
+  color: var(--vs-mint) !important;
+  transition: border-color 0.15s, background 0.15s;
+}
+.p-card:hover { border-color: var(--vs-teal) !important; background: rgba(162,213,198,0.06) !important; }
+.p-card .p-card-body { padding: 1rem !important; }
+.p-card .p-card-title { font-size: 0.5rem !important; color: var(--vs-mint) !important; margin-bottom: 0.4rem; }
+.p-card .p-card-subtitle { font-size: 0.4rem !important; color: var(--vs-teal) !important; line-height: 2; }
+
+/* ─── PrimeVue Message ───────────────────────────────────────────────────── */
+.p-message {
+  border-radius: 0 !important;
+  border-width: 2px !important;
+}
+.p-message-error {
+  background: rgba(255,112,112,0.08) !important;
+  border-color: var(--vs-error) !important;
+  color: #ffaaaa !important;
+}
+.p-message-text { font-size: 0.44rem !important; line-height: 2.2 !important; white-space: pre-wrap; }
+
+/* ─── PrimeVue Tag ───────────────────────────────────────────────────────── */
+.p-tag {
+  border-radius: 0 !important;
+  font-size: 0.38rem !important;
+  padding: 0.25rem 0.5rem !important;
+}
+.p-tag-primary {
+  background: var(--vs-mint) !important;
+  color: #000000 !important;
+}
+
+/* ─── PrimeVue Toast ─────────────────────────────────────────────────────── */
+.p-toast .p-toast-message {
+  border-radius: 0 !important;
+  box-shadow: 4px 4px 0 var(--vs-teal) !important;
+  background: #000000 !important;
+  border: 2px solid var(--vs-mint) !important;
+  color: var(--vs-mint) !important;
+}
+.p-toast .p-toast-summary { font-size: 0.5rem !important; }
+.p-toast .p-toast-detail  { font-size: 0.4rem !important; color: var(--vs-teal) !important; }
+
+/* ─── PrimeVue Divider ───────────────────────────────────────────────────── */
+.p-divider-horizontal::before {
+  border-color: rgba(162,213,198,0.12) !important;
+}
