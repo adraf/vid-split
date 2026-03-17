@@ -1,6 +1,10 @@
 <template>
   <Transition name="fade">
     <div v-if="visible" class="progress-wrap">
+
+      <!-- Animated VHS cassette split loader -->
+      <VhsLoader :visible="visible" />
+
       <p class="progress-label">&gt; COMPRESSING + SPLITTING</p>
 
       <ProgressBar
@@ -19,6 +23,7 @@
 
 <script setup>
 import ProgressBar from 'primevue/progressbar'
+import VhsLoader  from './VhsLoader.vue'
 
 defineProps({
   visible: { type: Boolean, default: false },
