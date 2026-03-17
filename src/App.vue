@@ -48,19 +48,8 @@
         :segments="segments"
         @save-segment="downloadSegment"
         @save-all="handleSaveAll"
+        @reset="resetAll"
       />
-
-      <!-- Reset -->
-      <Transition name="fade">
-        <Button
-          v-if="status === 'done' || status === 'error'"
-          label="↺  SPLIT ANOTHER VIDEO"
-          severity="secondary"
-          outlined
-          class="reset-btn"
-          @click="resetAll"
-        />
-      </Transition>
 
       <AppFooter />
 
@@ -74,7 +63,6 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import Button from 'primevue/button'
 import Toast  from 'primevue/toast'
 
 import { useVideoSplitter } from './composables/useVideoSplitter'
@@ -163,21 +151,6 @@ function resetAll() {
 .container {
   max-width: 680px;
   margin: 0 auto;
-}
-
-.reset-btn {
-  margin: 10px 0;
-  font-size: 9px !important;
-  letter-spacing: 1px;
-  color: rgba(162, 213, 198, 0.5) !important;
-  border-color: rgba(162, 213, 198, 0.35) !important;
-  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease !important;
-}
-
-.reset-btn:hover {
-  color: var(--vs-teal) !important;
-  border-color: var(--vs-teal) !important;
-  background: rgba(162, 213, 198, 0.08) !important;
 }
 
 .fade-enter-active,
