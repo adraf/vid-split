@@ -1,6 +1,6 @@
 <template>
   <header class="header">
-    <h1 class="logo">VID<span class="slash">///</span>SPLIT</h1>
+    <h1 class="logo">VID <span class="slash">//</span> SPLIT</h1>
     <p class="tagline">&gt; SLICE YOUR CLIPS // 4 MIN CHUNKS_</p>
   </header>
 </template>
