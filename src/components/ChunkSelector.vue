@@ -137,7 +137,7 @@ const CUSTOM_OPTION = {
 
 // ── State ────────────────────────────────────────────────────────────────────
 const selected    = ref(null)
-const customMins  = ref(1)
+const customMins  = ref(0)
 const customSecs  = ref(0)
 const customError = ref('')
 
@@ -188,7 +188,7 @@ const secsOptions = computed(() => {
 
 const activeChunkSec = computed(() => {
   if (selected.value === 'custom') {
-    const total = (customMins.value || 0) * 60 + (customSecs.value || 0)
+    const total = (Number(customMins.value) || 0) * 60 + (Number(customSecs.value) || 0)
     return total > 0 ? total : null
   }
   return PLATFORMS.find(p => p.id === selected.value)?.seconds ?? null
@@ -203,7 +203,7 @@ const chunks = computed(() => {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function labelFor(id) {
   if (id === 'custom') {
-    const total = (customMins.value || 0) * 60 + (customSecs.value || 0)
+    const total = (Number(customMins.value) || 0) * 60 + (Number(customSecs.value) || 0)
     return total > 0 ? `Custom  —  ${formatTime(total)}` : 'Custom'
   }
   const p = PLATFORMS.find(p => p.id === id)
@@ -215,7 +215,7 @@ function iconFor(id) {
 }
 
 function validateCustom() {
-  const total = (customMins.value || 0) * 60 + (customSecs.value || 0)
+  const total = (Number(customMins.value) || 0) * 60 + (Number(customSecs.value) || 0)
   if (total <= 0) {
     customError.value = 'MUST BE GREATER THAN 0'
     return false
