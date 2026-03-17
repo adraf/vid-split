@@ -24,17 +24,17 @@ import Divider from 'primevue/divider'
 .footer {
   text-align: center;
   padding: 28px 0 24px;
-  font-size: 6px;
-  line-height: 3;
+  font-size: 8px;
+  line-height: 3.2;
 }
 
 .footer-line {
-  color: rgba(162, 213, 198, 0.28);
+  color: rgba(162, 213, 198, 0.45);
   transition: color 0.2s ease;
 }
 
 .footer-line:hover {
-  color: rgba(162, 213, 198, 0.6);
+  color: rgba(162, 213, 198, 0.85);
 }
 
 .footer-link {

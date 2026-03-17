@@ -47,6 +47,15 @@ defineEmits(['save'])
 .save-btn {
   font-size: 7px !important;
   letter-spacing: 0.5px;
+  color: rgba(207, 255, 226, 0.55) !important;
+  border-color: rgba(207, 255, 226, 0.35) !important;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease !important;
+}
+
+.save-btn:hover {
+  color: var(--vs-mint) !important;
+  border-color: var(--vs-mint) !important;
+  background: rgba(207, 255, 226, 0.08) !important;
 }
 
 @media (max-width: 480px) {
