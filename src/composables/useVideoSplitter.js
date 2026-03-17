@@ -120,9 +120,33 @@ export function useVideoSplitter() {
     }
   }
 
-  function downloadSegment(index) {
+  async function downloadSegment(index) {
     const seg = segments.value[index]
     if (!seg) return
+
+    // Fetch the blob from the object URL so we can pass a File to share API
+    const blob = await fetch(seg.url).then(r => r.blob())
+    const file = new File([blob], seg.name, { type: 'video/mp4' })
+
+    // Use Web Share API if available and can share files (iOS Safari 15+)
+    if (
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare({ files: [file] })
+    ) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: seg.name,
+        })
+        return
+      } catch (err) {
+        // User cancelled share or share failed — fall through to download
+        if (err.name === 'AbortError') return
+      }
+    }
+
+    // Fallback: standard anchor download (desktop / non-iOS)
     const a    = document.createElement('a')
     a.href     = seg.url
     a.download = seg.name
@@ -130,9 +154,11 @@ export function useVideoSplitter() {
   }
 
   async function downloadAll() {
+    // If Web Share API is available, share files one at a time
+    // (iOS doesn't support sharing multiple video files at once)
     for (let i = 0; i < segments.value.length; i++) {
-      downloadSegment(i)
-      await delay(400)
+      await downloadSegment(i)
+      await delay(600)
     }
   }
 
