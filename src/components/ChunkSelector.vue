@@ -15,7 +15,7 @@
       <!-- Dropdown -->
       <Select
         v-model="selected"
-        :options="availableOptions"
+        :options="dropdownOptions"
         option-label="label"
         option-value="id"
         :placeholder="'SELECT CHUNK SIZE'"
@@ -24,7 +24,12 @@
       >
         <template #value="{ value }">
           <div v-if="value" class="selected-value">
-            <img :src="iconFor(value)" class="option-icon-img" :alt="labelFor(value)" />
+            <img
+              v-if="iconFor(value)"
+              :src="iconFor(value)"
+              class="option-icon-img"
+              :alt="labelFor(value)"
+            />
             <span>{{ labelFor(value) }}</span>
           </div>
           <span v-else class="placeholder-text">SELECT CHUNK SIZE</span>
@@ -32,15 +37,54 @@
 
         <template #option="{ option }">
           <div class="option-row">
-            <img :src="option.icon" class="option-icon-img" :alt="option.label" />
+            <img
+              v-if="option.icon"
+              :src="option.icon"
+              class="option-icon-img"
+              :alt="option.label"
+            />
+            <span v-else class="option-icon-placeholder" />
             <span class="option-label">{{ option.label }}</span>
             <span class="option-time">{{ option.timeLabel }}</span>
           </div>
         </template>
       </Select>
 
-      <!-- Preview of resulting chunks -->
-      <div v-if="selected && duration && chunks.length" class="chunks-preview">
+      <!-- Custom time picker — shown when "custom" is selected -->
+      <Transition name="fade">
+        <div v-if="selected === 'custom'" class="custom-picker">
+          <p class="custom-label">&gt; ENTER CUSTOM CHUNK LENGTH</p>
+          <div class="time-inputs">
+            <div class="time-field">
+              <label class="field-label">MINS</label>
+              <input
+                v-model.number="customMins"
+                type="number"
+                min="0"
+                :max="maxCustomMins"
+                class="time-input"
+                @input="onCustomChange"
+              />
+            </div>
+            <span class="time-sep">:</span>
+            <div class="time-field">
+              <label class="field-label">SECS</label>
+              <input
+                v-model.number="customSecs"
+                type="number"
+                min="0"
+                max="59"
+                class="time-input"
+                @input="onCustomChange"
+              />
+            </div>
+            <span v-if="customError" class="custom-error">{{ customError }}</span>
+          </div>
+        </div>
+      </Transition>
+
+      <!-- Chunk preview badges -->
+      <div v-if="chunks.length" class="chunks-preview">
         <span class="preview-label">RESULT:</span>
         <span
           v-for="chunk in chunks"
@@ -50,6 +94,7 @@
           P{{ chunk.index }}: {{ formatTime(chunk.duration) }}
         </span>
       </div>
+
     </div>
   </Transition>
 </template>
@@ -60,7 +105,7 @@ import Select from 'primevue/select'
 import { formatTime, calcChunks } from '../utils/format'
 
 const props = defineProps({
-  duration: { type: Number, default: null }, // seconds
+  duration: { type: Number, default: null },
   show:     { type: Boolean, default: false },
 })
 
@@ -80,21 +125,31 @@ const PLATFORMS = [
   { id: 'facebook-stories',  label: 'Facebook Stories',  seconds: 15,  icon: '/icons8/icons8-facebook.png',  timeLabel: '0:15' },
 ]
 
+const CUSTOM_OPTION = {
+  id: 'custom', label: 'Custom', seconds: null, icon: null, timeLabel: '...',
+}
+
 // ── State ────────────────────────────────────────────────────────────────────
-const selected = ref(null)
+const selected    = ref(null)
+const customMins  = ref(1)
+const customSecs  = ref(0)
+const customError = ref('')
 
 // ── Computed ─────────────────────────────────────────────────────────────────
+const availablePlatforms = computed(() =>
+  !props.duration
+    ? PLATFORMS
+    : PLATFORMS.filter(p => p.seconds < props.duration)
+)
 
-// Only show platforms whose chunk size is <= video duration (or all if no duration yet)
-const availableOptions = computed(() => {
-  if (!props.duration) return PLATFORMS
-  return PLATFORMS.filter(p => p.seconds <= props.duration)
-})
+const dropdownOptions = computed(() => [
+  ...availablePlatforms.value,
+  CUSTOM_OPTION,
+])
 
-const formattedDuration = computed(() => {
-  if (!props.duration) return ''
-  return formatTime(props.duration)
-})
+const formattedDuration = computed(() =>
+  props.duration ? formatTime(props.duration) : ''
+)
 
 const contextMessage = computed(() => {
   if (!props.duration) return ''
@@ -105,50 +160,89 @@ const contextMessage = computed(() => {
   return '— YOUR VIDEO IS SHORT. CHOOSE A SUITABLE CHUNK SIZE BELOW.'
 })
 
+const maxCustomMins = computed(() =>
+  props.duration ? Math.floor(props.duration / 60) : 99
+)
+
+const activeChunkSec = computed(() => {
+  if (selected.value === 'custom') {
+    const total = (customMins.value || 0) * 60 + (customSecs.value || 0)
+    return total > 0 ? total : null
+  }
+  return PLATFORMS.find(p => p.id === selected.value)?.seconds ?? null
+})
+
 const chunks = computed(() => {
-  if (!selected.value || !props.duration) return []
-  return calcChunks(props.duration, secondsFor(selected.value))
+  if (!activeChunkSec.value || !props.duration) return []
+  if (activeChunkSec.value >= props.duration) return []
+  return calcChunks(props.duration, activeChunkSec.value)
 })
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function platformById(id) {
-  return PLATFORMS.find(p => p.id === id)
-}
-
 function labelFor(id) {
-  const p = platformById(id)
+  if (id === 'custom') {
+    const total = (customMins.value || 0) * 60 + (customSecs.value || 0)
+    return total > 0 ? `Custom  —  ${formatTime(total)}` : 'Custom'
+  }
+  const p = PLATFORMS.find(p => p.id === id)
   return p ? `${p.label}  —  ${p.timeLabel}` : id
 }
 
 function iconFor(id) {
-  const p = platformById(id)
-  return p ? p.icon : ''
+  return PLATFORMS.find(p => p.id === id)?.icon ?? null
 }
 
-function secondsFor(id) {
-  const p = platformById(id)
-  return p ? p.seconds : 240
+function validateCustom() {
+  const total = (customMins.value || 0) * 60 + (customSecs.value || 0)
+  if (total <= 0) {
+    customError.value = 'MUST BE GREATER THAN 0'
+    return false
+  }
+  if (props.duration && total >= props.duration) {
+    customError.value = `MUST BE LESS THAN ${formattedDuration.value}`
+    return false
+  }
+  customError.value = ''
+  return true
 }
 
-// ── Smart default when duration is detected ──────────────────────────────────
-watch(
-  () => props.duration,
-  (dur) => {
-    if (!dur) return
-    // iMessage if >=4min, else pick the largest platform chunk that fits
-    if (dur >= 240) {
-      selected.value = 'imessage'
-    } else {
-      const best = availableOptions.value[0]
-      selected.value = best ? best.id : 'tiktok'
-    }
-    emit('update:chunkSec', secondsFor(selected.value))
-  },
-  { immediate: true },
-)
+// ── Smart default ─────────────────────────────────────────────────────────────
+watch(() => props.duration, (dur) => {
+  if (!dur) return
+  if (dur >= 240) {
+    selected.value = 'imessage'
+  } else {
+    const best = availablePlatforms.value[0]
+    selected.value = best ? best.id : 'custom'
+  }
+  emitCurrent()
+}, { immediate: true })
 
+// ── Handlers ─────────────────────────────────────────────────────────────────
 function onSelect() {
-  emit('update:chunkSec', secondsFor(selected.value))
+  if (selected.value === 'custom') {
+    if (props.duration) {
+      const half = Math.floor(props.duration / 2)
+      customMins.value = Math.floor(half / 60)
+      customSecs.value = half % 60
+    } else {
+      customMins.value = 1
+      customSecs.value = 0
+    }
+  }
+  customError.value = ''
+  emitCurrent()
+}
+
+function onCustomChange() {
+  if (customSecs.value > 59) customSecs.value = 59
+  if (customSecs.value < 0)  customSecs.value = 0
+  if (validateCustom()) emitCurrent()
+}
+
+function emitCurrent() {
+  const sec = activeChunkSec.value
+  if (sec && sec > 0) emit('update:chunkSec', sec)
 }
 </script>
 
@@ -161,11 +255,7 @@ function onSelect() {
   position: relative;
 }
 
-.corner {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-}
+.corner { position: absolute; width: 12px; height: 12px; }
 .corner-tl {
   top: -2px; left: -2px;
   border-top: 2px solid var(--vs-mint);
@@ -194,11 +284,9 @@ function onSelect() {
   word-break: break-word;
 }
 
-.highlight {
-  color: var(--vs-mint);
-}
+.highlight { color: var(--vs-mint); }
 
-/* ── PrimeVue Select overrides ── */
+/* ── PrimeVue Select ── */
 .platform-select {
   width: 100%;
   font-family: var(--vs-font) !important;
@@ -209,36 +297,29 @@ function onSelect() {
   color: var(--vs-mint) !important;
   transition: border-color 0.2s;
 }
-
 .platform-select:hover,
 .platform-select.p-focus {
   border-color: var(--vs-mint) !important;
 }
-
-/* Override PrimeVue Select internals */
 .platform-select :deep(.p-select-label) {
   font-family: var(--vs-font) !important;
   font-size: 7px !important;
   color: var(--vs-mint) !important;
   padding: 10px 12px !important;
 }
-
 .platform-select :deep(.p-select-dropdown) {
   color: var(--vs-teal) !important;
 }
-
 .platform-select :deep(.p-select-overlay) {
   border-radius: 0 !important;
   background: #050505 !important;
   border: 2px solid var(--vs-teal) !important;
   box-shadow: 4px 4px 0 rgba(162, 213, 198, 0.2) !important;
-  /* Prevent overflow beyond viewport */
   max-width: calc(100vw - 48px) !important;
   width: 100% !important;
   left: 0 !important;
   box-sizing: border-box !important;
 }
-
 .platform-select :deep(.p-select-option) {
   font-family: var(--vs-font) !important;
   font-size: 6.5px !important;
@@ -247,7 +328,6 @@ function onSelect() {
   padding: 8px 12px !important;
   transition: background 0.15s, color 0.15s;
 }
-
 .platform-select :deep(.p-select-option:hover),
 .platform-select :deep(.p-select-option-selected) {
   background: rgba(207, 255, 226, 0.1) !important;
@@ -259,7 +339,7 @@ function onSelect() {
   font-size: 7px;
 }
 
-/* Option row layout */
+/* Option row */
 .option-row {
   display: flex;
   align-items: center;
@@ -267,14 +347,12 @@ function onSelect() {
   width: 100%;
   min-width: 0;
 }
-
 .selected-value {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
 }
-
 .option-icon-img {
   width: 18px;
   height: 18px;
@@ -283,7 +361,11 @@ function onSelect() {
   filter: invert(1) sepia(1) saturate(2) hue-rotate(100deg) brightness(1.2);
   opacity: 0.85;
 }
-
+.option-icon-placeholder {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
 .option-label {
   flex: 1;
   min-width: 0;
@@ -291,14 +373,84 @@ function onSelect() {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .option-time {
   color: var(--vs-mint);
   flex-shrink: 0;
   opacity: 0.8;
 }
 
-/* Chunk preview badges */
+/* ── Custom time picker ── */
+.custom-picker {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(162, 213, 198, 0.2);
+}
+
+.custom-label {
+  font-size: 7px;
+  color: var(--vs-teal);
+  margin-bottom: 12px;
+}
+
+.time-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.time-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-family: var(--vs-font);
+  font-size: 6px;
+  color: var(--vs-teal);
+  letter-spacing: 1px;
+}
+
+.time-input {
+  width: 64px;
+  padding: 8px 10px;
+  font-family: var(--vs-font);
+  font-size: 10px;
+  color: var(--vs-mint);
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(162, 213, 198, 0.4);
+  border-radius: 0;
+  text-align: center;
+  transition: border-color 0.2s;
+  -moz-appearance: textfield;
+}
+.time-input::-webkit-outer-spin-button,
+.time-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.time-input:focus {
+  outline: none;
+  border-color: var(--vs-mint);
+}
+
+.time-sep {
+  font-family: var(--vs-font);
+  font-size: 16px;
+  color: var(--vs-teal);
+  padding-bottom: 6px;
+}
+
+.custom-error {
+  font-family: var(--vs-font);
+  font-size: 6px;
+  color: #ff7070;
+  align-self: flex-end;
+  padding-bottom: 8px;
+}
+
+/* ── Chunk preview badges ── */
 .chunks-preview {
   display: flex;
   flex-wrap: wrap;
@@ -327,36 +479,33 @@ function onSelect() {
 
 /* ── Mobile ── */
 @media (max-width: 540px) {
-  .chunk-selector {
-    padding: 14px;
-  }
-
-  .section-title {
-    font-size: 6px;
-  }
-
-  .context-msg {
-    font-size: 6px;
-    line-height: 2;
-  }
+  .chunk-selector { padding: 14px; }
+  .section-title  { font-size: 6px; }
+  .context-msg    { font-size: 6px; line-height: 2; }
+  .custom-label   { font-size: 6px; }
 
   .platform-select :deep(.p-select-label) {
     font-size: 6px !important;
     padding: 8px 10px !important;
   }
-
   .platform-select :deep(.p-select-option) {
     font-size: 6px !important;
     padding: 7px 10px !important;
   }
-
-  .option-icon-img {
-    width: 14px;
-    height: 14px;
-  }
+  .option-icon-img,
+  .option-icon-placeholder { width: 14px; height: 14px; }
+  .time-input { width: 54px; font-size: 9px; }
 }
 
-/* Transition */
+/* Transitions */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
 .slide-down-enter-active,
 .slide-down-leave-active {
   transition: opacity 0.3s ease, transform 0.3s ease;
