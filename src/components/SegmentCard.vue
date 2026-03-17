@@ -33,10 +33,31 @@ defineEmits(['save'])
 
 <style scoped>
 .segment-card {
-  /* Square via aspect-ratio */
   aspect-ratio: 1 / 1;
   display: flex;
   flex-direction: column;
+}
+
+@media (max-width: 540px) {
+  .segment-card {
+    aspect-ratio: unset;
+    min-height: 130px;
+  }
+
+  .card-inner {
+    padding: 12px !important;
+    gap: 7px !important;
+  }
+
+  .part-label {
+    font-size: 9px !important;
+  }
+
+  .meta {
+    flex-direction: row !important;
+    gap: 12px !important;
+    font-size: 8px !important;
+  }
 }
 
 /* Make PrimeVue Card fill the square and stretch body */

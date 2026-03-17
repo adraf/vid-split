@@ -31,6 +31,14 @@
   margin-top: 14px;
   letter-spacing: 2px;
   opacity: 0.8;
+  line-height: 2.4;
+}
+
+@media (max-width: 480px) {
+  .tagline {
+    font-size: 6px;
+    letter-spacing: 1px;
+  }
 }
 
 @keyframes flicker {

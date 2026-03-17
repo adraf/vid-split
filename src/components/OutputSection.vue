@@ -68,8 +68,11 @@ const segmentsWithIndex = computed(() =>
   display: flex;
   align-items: center;
   gap: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.tick { color: var(--vs-teal); }
+.tick { color: var(--vs-teal); flex-shrink: 0; }
 
 /* ── Top action buttons ── */
 .top-actions {
@@ -105,7 +108,7 @@ const segmentsWithIndex = computed(() =>
   box-shadow: 3px 3px 0 rgba(162, 213, 198, 0.3) !important;
 }
 
-/* ── 2-column square grid ── */
+/* ── Grid: 2-col squares on desktop, 1-col short rectangles on mobile ── */
 .segments-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -127,8 +130,14 @@ const segmentsWithIndex = computed(() =>
   transform: translateY(16px);
 }
 
-@media (max-width: 400px) {
-  .top-actions { flex-direction: column; }
-  .segments-grid { grid-template-columns: 1fr; }
+@media (max-width: 540px) {
+  .output-title { font-size: 7px; }
+  .save-all-btn,
+  .reset-btn    { font-size: 7px !important; letter-spacing: 0.5px; }
+  .top-actions  { gap: 8px; }
+  /* Single column short rectangles on mobile */
+  .segments-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
