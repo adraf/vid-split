@@ -25,7 +25,6 @@
         <template #value="{ value }">
           <div v-if="value" class="selected-value">
             <img
-              v-if="iconFor(value)"
               :src="iconFor(value)"
               class="option-icon-img"
               :alt="labelFor(value)"
@@ -38,12 +37,10 @@
         <template #option="{ option }">
           <div class="option-row">
             <img
-              v-if="option.icon"
               :src="option.icon"
               class="option-icon-img"
               :alt="option.label"
             />
-            <span v-else class="option-icon-placeholder" />
             <span class="option-label">{{ option.label }}</span>
             <span class="option-time">{{ option.timeLabel }}</span>
           </div>
@@ -132,7 +129,7 @@ const PLATFORMS = [
 ]
 
 const CUSTOM_OPTION = {
-  id: 'custom', label: 'Custom', seconds: null, icon: null, timeLabel: '...',
+  id: 'custom', label: 'Custom', seconds: null, icon: '/icons8/icons8-custom.png', timeLabel: '...',
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -211,6 +208,7 @@ function labelFor(id) {
 }
 
 function iconFor(id) {
+  if (id === 'custom') return '/icons8/icons8-custom.png'
   return PLATFORMS.find(p => p.id === id)?.icon ?? null
 }
 
