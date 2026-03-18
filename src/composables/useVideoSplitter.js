@@ -1,35 +1,20 @@
 import { ref, readonly } from 'vue'
 import { FFmpeg } from '@ffmpeg/ffmpeg'
-import { fetchFile, toBlobURL } from '@ffmpeg/util'
+import { toBlobURL } from '@ffmpeg/util'
 import { calcChunks, delay } from '../utils/format'
 
 export const DEFAULT_CHUNK_SEC = 240 // iMessage 4 min default
 
 const FFMPEG_BASE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm'
 
-// Singleton — keeps the FFmpeg instance alive across re-renders
 let ffmpegInstance = null
 
-export async function preloadFFmpeg() {
-  if (ffmpegInstance) return
-  try {
-    ffmpegInstance = new FFmpeg()
-    await ffmpegInstance.load({
-      coreURL: await toBlobURL(`${FFMPEG_BASE}/ffmpeg-core.js`,   'text/javascript'),
-      wasmURL: await toBlobURL(`${FFMPEG_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
-    })
-  } catch (_) {
-    // Preload failed silently — ensureFFmpeg() will retry when split() is called
-    ffmpegInstance = null
-  }
-}
-
 export function useVideoSplitter() {
-  const status      = ref('idle')   // idle | loading | processing | done | error
+  const status      = ref('idle')
   const progressPct = ref(0)
   const progressMsg = ref('')
   const error       = ref(null)
-  const segments    = ref([])       // { name, url, size, duration }[]
+  const segments    = ref([])
 
   function setProgress(pct, msg = null) {
     progressPct.value = pct
@@ -59,20 +44,17 @@ export function useVideoSplitter() {
     return ffmpegInstance
   }
 
-  // chunkSec is now passed in at call time so the UI can drive it
   async function split(file, chunkSec = DEFAULT_CHUNK_SEC) {
     reset()
     error.value  = null
     status.value = 'loading'
 
-    // Acquire WakeLock so the screen stays on during processing.
-    // Safari iOS 16.4+ supports this — silently ignored on older versions.
     let wakeLock = null
     try {
       if ('wakeLock' in navigator) {
         wakeLock = await navigator.wakeLock.request('screen')
       }
-    } catch (_) { /* WakeLock unavailable — continue without it */ }
+    } catch (_) {}
 
     try {
       setProgress(5, 'LOADING FFMPEG ENGINE...')
@@ -81,7 +63,10 @@ export function useVideoSplitter() {
       setProgress(18, 'READING VIDEO FILE...')
       const ext           = (file.name.split('.').pop() || 'mp4').toLowerCase()
       const inputFilename = `input.${ext}`
-      await ff.writeFile(inputFilename, await fetchFile(file))
+
+      // Pass arrayBuffer directly — avoids fetchFile creating a full JS copy
+      // which would otherwise double memory usage before WASM even sees the file
+      await ff.writeFile(inputFilename, new Uint8Array(await file.arrayBuffer()))
 
       setProgress(24, 'DETECTING DURATION...')
       const duration = await getVideoDuration(file)
@@ -113,11 +98,10 @@ export function useVideoSplitter() {
           '-ss',  String(chunk.start),
           '-i',   inputFilename,
           '-t',   String(chunk.duration),
-          // Re-encode to H.264 1080p — safe on all devices, fixes HEVC memory crash
           '-vf',  'scale=w=1920:h=1080:force_original_aspect_ratio=decrease:flags=lanczos',
           '-c:v', 'libx264',
-          '-preset', 'ultrafast',   // fastest encode, still fine quality for sharing
-          '-crf',    '23',          // quality factor: 18=high, 23=good, 28=smaller file
+          '-preset', 'ultrafast',
+          '-crf',    '23',
           '-c:a', 'aac',
           '-b:a', '128k',
           '-movflags', '+faststart',
@@ -127,11 +111,9 @@ export function useVideoSplitter() {
 
         ff.off('progress', onProgress)
 
-        // Read output, create blob, then immediately free the raw buffer
-        // so it can be GC'd before the next chunk starts encoding
         let raw = await ff.readFile(outName)
         const blob = new Blob([raw.buffer], { type: 'video/mp4' })
-        raw = null // release the ArrayBuffer reference — helps iOS GC
+        raw = null // release ArrayBuffer so GC can collect before next chunk
 
         segments.value.push({
           name:     `${baseName}_part${chunk.index}.mp4`,
@@ -140,11 +122,8 @@ export function useVideoSplitter() {
           duration: chunk.duration,
         })
 
-        // Delete from WASM filesystem immediately — don't wait until end
         await ff.deleteFile(outName)
-
-        // Small pause to give the JS engine a chance to GC before next chunk
-        await delay(200)
+        await delay(200) // give GC a moment before next encode
       }
 
       await ff.deleteFile(inputFilename)
@@ -156,7 +135,6 @@ export function useVideoSplitter() {
       error.value  = err.message || String(err)
       status.value = 'error'
     } finally {
-      // Always release WakeLock when done, whether success or failure
       try { wakeLock?.release() } catch (_) {}
     }
   }
@@ -165,29 +143,18 @@ export function useVideoSplitter() {
     const seg = segments.value[index]
     if (!seg) return
 
-    // Fetch the blob from the object URL so we can pass a File to share API
     const blob = await fetch(seg.url).then(r => r.blob())
     const file = new File([blob], seg.name, { type: 'video/mp4' })
 
-    // Use Web Share API if available and can share files (iOS Safari 15+)
-    if (
-      navigator.share &&
-      navigator.canShare &&
-      navigator.canShare({ files: [file] })
-    ) {
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share({
-          files: [file],
-          title: seg.name,
-        })
+        await navigator.share({ files: [file], title: seg.name })
         return
       } catch (err) {
-        // User cancelled share or share failed — fall through to download
         if (err.name === 'AbortError') return
       }
     }
 
-    // Fallback: standard anchor download (desktop / non-iOS)
     const a    = document.createElement('a')
     a.href     = seg.url
     a.download = seg.name
@@ -195,8 +162,6 @@ export function useVideoSplitter() {
   }
 
   async function downloadAll() {
-    // If Web Share API is available, share files one at a time
-    // (iOS doesn't support sharing multiple video files at once)
     for (let i = 0; i < segments.value.length; i++) {
       await downloadSegment(i)
       await delay(600)
