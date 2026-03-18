@@ -113,15 +113,24 @@ export function useVideoSplitter() {
 
         ff.off('progress', onProgress)
 
-        const raw  = await ff.readFile(outName)
+        // Read output, create blob, then immediately free the raw buffer
+        // so it can be GC'd before the next chunk starts encoding
+        let raw = await ff.readFile(outName)
         const blob = new Blob([raw.buffer], { type: 'video/mp4' })
+        raw = null // release the ArrayBuffer reference — helps iOS GC
+
         segments.value.push({
           name:     `${baseName}_part${chunk.index}.mp4`,
           url:      URL.createObjectURL(blob),
           size:     blob.size,
           duration: chunk.duration,
         })
+
+        // Delete from WASM filesystem immediately — don't wait until end
         await ff.deleteFile(outName)
+
+        // Small pause to give the JS engine a chance to GC before next chunk
+        await delay(200)
       }
 
       await ff.deleteFile(inputFilename)
