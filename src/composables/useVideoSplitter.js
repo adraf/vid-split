@@ -10,6 +10,20 @@ const FFMPEG_BASE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm'
 // Singleton — keeps the FFmpeg instance alive across re-renders
 let ffmpegInstance = null
 
+export async function preloadFFmpeg() {
+  if (ffmpegInstance) return
+  try {
+    ffmpegInstance = new FFmpeg()
+    await ffmpegInstance.load({
+      coreURL: await toBlobURL(`${FFMPEG_BASE}/ffmpeg-core.js`,   'text/javascript'),
+      wasmURL: await toBlobURL(`${FFMPEG_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
+    })
+  } catch (_) {
+    // Preload failed silently — ensureFFmpeg() will retry when split() is called
+    ffmpegInstance = null
+  }
+}
+
 export function useVideoSplitter() {
   const status      = ref('idle')   // idle | loading | processing | done | error
   const progressPct = ref(0)

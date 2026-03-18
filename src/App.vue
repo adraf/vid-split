@@ -61,11 +61,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import Toast  from 'primevue/toast'
 
-import { useVideoSplitter } from './composables/useVideoSplitter'
+import { useVideoSplitter, preloadFFmpeg } from './composables/useVideoSplitter'
 import { DEFAULT_CHUNK_SEC } from './composables/useVideoSplitter'
 import AppHeader      from './components/AppHeader.vue'
 import AppFooter      from './components/AppFooter.vue'
@@ -84,6 +84,11 @@ const {
 } = useVideoSplitter()
 
 const toast = useToast()
+
+// Pre-load FFmpeg as soon as the app mounts — before the user picks a file.
+// This means WASM compilation happens on its own without competing with
+// the video file being loaded into memory at the same time.
+onMounted(() => { preloadFFmpeg() })
 
 // ── Local state ──────────────────────────────────────────────────────────────
 const currentFile = ref(null)
