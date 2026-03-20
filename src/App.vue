@@ -41,6 +41,7 @@
         :visible="isProcessing"
         :pct="progressPct"
         :msg="progressMsg"
+        :is-uploading="status === 'uploading'"
       />
 
       <!-- Output segments -->
@@ -90,7 +91,7 @@ const duration    = ref(null)
 const chunkSec    = ref(DEFAULT_CHUNK_SEC)
 
 const isProcessing = computed(() =>
-  status.value === 'loading' || status.value === 'processing'
+  status.value === 'uploading' || status.value === 'loading' || status.value === 'processing'
 )
 
 // ── Handlers ─────────────────────────────────────────────────────────────────

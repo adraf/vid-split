@@ -15,8 +15,7 @@
     <p class="upload-text">DROP VIDEO HERE</p>
     <p class="upload-sub">
       MP4 &nbsp;·&nbsp; MOV &nbsp;·&nbsp; HEVC &nbsp;·&nbsp; M4V &nbsp;·&nbsp; AND MORE<br />
-      DRAG &amp; DROP &nbsp;·&nbsp; OR TAP TO SELECT<br />
-      VIDEOS ARE COMPRESSED TO 1080P DURING SPLITTING
+      DRAG &amp; DROP &nbsp;·&nbsp; OR TAP TO SELECT
     </p>
   </div>
 
