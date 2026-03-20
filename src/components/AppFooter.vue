@@ -150,8 +150,7 @@ const showPrivacy = ref(false)
   border: none;
   padding: 0;
   font-size: inherit;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
 }
 
 /* ── Dialog overrides ── */
@@ -159,8 +158,8 @@ const showPrivacy = ref(false)
   border-radius: 0 !important;
   border: 2px solid var(--vs-teal) !important;
   background: #000 !important;
-  max-width: 640px;
-  width: 90vw !important;
+  width: 560px !important;
+  max-width: 90vw !important;
   box-shadow: 6px 6px 0 rgba(162, 213, 198, 0.2) !important;
 }
 
