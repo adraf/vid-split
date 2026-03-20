@@ -1,10 +1,13 @@
 import { ref, readonly } from 'vue'
-import { delay } from '../utils/format'
+import { FFmpeg } from '@ffmpeg/ffmpeg'
+import { toBlobURL } from '@ffmpeg/util'
+import { calcChunks, delay } from '../utils/format'
 
 export const DEFAULT_CHUNK_SEC = 240
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:8080'
-const CHUNK_SIZE  = 5 * 1024 * 1024 // 5MB chunks for resumable upload
+const FFMPEG_BASE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm'
+
+let ffmpegInstance = null
 
 export function useVideoSplitter() {
   const status      = ref('idle')
@@ -13,17 +16,38 @@ export function useVideoSplitter() {
   const error       = ref(null)
   const segments    = ref([])
 
-  let currentJobId = null
-
   function setProgress(pct, msg = null) {
-    progressPct.value = Math.min(100, Math.round(pct))
+    progressPct.value = pct
     if (msg !== null) progressMsg.value = msg
+  }
+
+  function getVideoDuration(file) {
+    return new Promise((resolve) => {
+      const v   = document.createElement('video')
+      v.preload = 'metadata'
+      const url = URL.createObjectURL(file)
+      v.src     = url
+      const done = (d) => { URL.revokeObjectURL(url); resolve(d) }
+      v.onloadedmetadata = () => done(v.duration)
+      v.onerror          = () => done(0)
+      setTimeout(() => done(0), 6000)
+    })
+  }
+
+  async function ensureFFmpeg() {
+    if (ffmpegInstance) return ffmpegInstance
+    ffmpegInstance = new FFmpeg()
+    await ffmpegInstance.load({
+      coreURL: await toBlobURL(`${FFMPEG_BASE}/ffmpeg-core.js`,   'text/javascript'),
+      wasmURL: await toBlobURL(`${FFMPEG_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
+    })
+    return ffmpegInstance
   }
 
   async function split(file, chunkSec = DEFAULT_CHUNK_SEC) {
     reset()
     error.value  = null
-    status.value = 'uploading'
+    status.value = 'loading'
 
     let wakeLock = null
     try {
@@ -33,64 +57,71 @@ export function useVideoSplitter() {
     } catch (_) {}
 
     try {
-      // ── Step 1: Get resumable upload URL from our server ──────────────────
-      setProgress(0, 'PREPARING UPLOAD...')
+      setProgress(5, 'LOADING FFMPEG ENGINE...')
+      const ff = await ensureFFmpeg()
 
-      const urlRes = await fetch(`${SERVER_URL}/upload-url`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          filename:    file.name,
-          contentType: file.type || 'video/mp4',
-        }),
-      })
+      setProgress(18, 'READING VIDEO FILE...')
+      const ext           = (file.name.split('.').pop() || 'mp4').toLowerCase()
+      const inputFilename = `input.${ext}`
+      await ff.writeFile(inputFilename, new Uint8Array(await file.arrayBuffer()))
 
-      if (!urlRes.ok) {
-        const err = await urlRes.json()
-        throw new Error(err.error || 'Failed to get upload URL')
+      setProgress(24, 'DETECTING DURATION...')
+      const duration = await getVideoDuration(file)
+      if (!duration || !isFinite(duration) || duration <= 0) {
+        throw new Error(
+          'COULD NOT READ VIDEO DURATION.\n\nTRY CONVERTING TO MP4 FIRST,\nOR USE A DIFFERENT FILE.',
+        )
       }
 
-      const { jobId, gcsInput, uploadUrl } = await urlRes.json()
-      currentJobId = jobId
-
-      // ── Step 2: Upload directly to GCS in chunks (resumable) ─────────────
-      // Each chunk is 5MB — if the connection drops, GCS can resume
-      setProgress(2, 'UPLOADING VIDEO...')
-      await resumableUpload(file, uploadUrl, (pct) => {
-        setProgress(2 + pct * 0.58, 'UPLOADING VIDEO...')
-      })
-
-      // ── Step 3: Tell server to process the uploaded file ──────────────────
-      status.value = 'processing'
-      setProgress(62, 'SPLITTING VIDEO...')
-
-      const processRes = await fetch(`${SERVER_URL}/process`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ jobId, gcsInput, chunkSec }),
-      })
-
-      if (!processRes.ok) {
-        const err = await processRes.json()
-        throw new Error(err.error || 'Processing failed')
-      }
-
-      const { segments: segs } = await processRes.json()
-      setProgress(90, 'PREPARING DOWNLOADS...')
-
+      status.value   = 'processing'
+      const chunks   = calcChunks(duration, chunkSec)
       const baseName = file.name.replace(/\.[^.]+$/, '')
-      segments.value = segs.map(seg => ({
-        index:       seg.index,
-        name:        `${baseName}_part${seg.index}.mp4`,
-        duration:    seg.duration,
-        size:        seg.size,
-        downloadUrl: `${SERVER_URL}/download/${jobId}/${seg.name}`,
-      }))
 
+      setProgress(28, `SPLITTING INTO ${chunks.length} PART${chunks.length !== 1 ? 'S' : ''}...`)
+
+      for (const chunk of chunks) {
+        const outName  = `out_part${chunk.index}.mp4`
+        const pctStart = 28 + ((chunk.index - 1) / chunks.length) * 65
+        const pctEnd   = 28 + (chunk.index       / chunks.length) * 65
+
+        setProgress(Math.round(pctStart), `SPLITTING PART ${chunk.index} OF ${chunks.length}...`)
+
+        const onProgress = ({ progress }) => {
+          setProgress(Math.round(pctStart + progress * (pctEnd - pctStart)), null)
+        }
+        ff.on('progress', onProgress)
+
+        await ff.exec([
+          '-ss',  String(chunk.start),
+          '-i',   inputFilename,
+          '-t',   String(chunk.duration),
+          '-c',   'copy',
+          '-movflags', '+faststart',
+          '-avoid_negative_ts', 'make_zero',
+          outName,
+        ])
+
+        ff.off('progress', onProgress)
+
+        let raw = await ff.readFile(outName)
+        const blob = new Blob([raw.buffer], { type: 'video/mp4' })
+        raw = null
+
+        segments.value.push({
+          name:     `${baseName}_part${chunk.index}.mp4`,
+          url:      URL.createObjectURL(blob),
+          size:     blob.size,
+          duration: chunk.duration,
+        })
+
+        await ff.deleteFile(outName)
+        await delay(200)
+      }
+
+      await ff.deleteFile(inputFilename)
       setProgress(100, '✓ ALL PARTS READY TO SAVE!')
       await delay(700)
       status.value = 'done'
-
     } catch (err) {
       console.error('[VidSplit]', err)
       error.value  = err.message || String(err)
@@ -104,31 +135,22 @@ export function useVideoSplitter() {
     const seg = segments.value[index]
     if (!seg) return
 
-    try {
-      const response = await fetch(seg.downloadUrl)
-      if (!response.ok) throw new Error('Download failed')
+    const blob = await fetch(seg.url).then(r => r.blob())
+    const file = new File([blob], seg.name, { type: 'video/mp4' })
 
-      const blob = await response.blob()
-      const file = new File([blob], seg.name, { type: 'video/mp4' })
-
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: seg.name })
-          return
-        } catch (err) {
-          if (err.name === 'AbortError') return
-        }
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: seg.name })
+        return
+      } catch (err) {
+        if (err.name === 'AbortError') return
       }
-
-      const url = URL.createObjectURL(blob)
-      const a   = document.createElement('a')
-      a.href     = url
-      a.download = seg.name
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error('[download]', err)
     }
+
+    const a    = document.createElement('a')
+    a.href     = seg.url
+    a.download = seg.name
+    a.click()
   }
 
   async function downloadAll() {
@@ -136,18 +158,14 @@ export function useVideoSplitter() {
       await downloadSegment(i)
       await delay(600)
     }
-    if (currentJobId) {
-      fetch(`${SERVER_URL}/cleanup/${currentJobId}`, { method: 'DELETE' }).catch(() => {})
-    }
   }
 
   function reset() {
+    segments.value.forEach((s) => URL.revokeObjectURL(s.url))
     segments.value    = []
     progressPct.value = 0
     progressMsg.value = ''
     status.value      = 'idle'
-    currentJobId      = null
-    error.value       = null
   }
 
   return {
@@ -161,62 +179,5 @@ export function useVideoSplitter() {
     downloadAll,
     reset,
     DEFAULT_CHUNK_SEC,
-  }
-}
-
-// ── Resumable chunked upload to GCS ──────────────────────────────────────────
-// Uploads the file in 5MB pieces directly to GCS resumable upload URL.
-// If a chunk fails it retries up to 3 times before giving up.
-async function resumableUpload(file, uploadUrl, onProgress) {
-  const totalSize = file.size
-  let offset      = 0
-
-  // Check if there's already progress on this upload (resume support)
-  try {
-    const checkRes = await fetch(uploadUrl, {
-      method:  'PUT',
-      headers: { 'Content-Range': `bytes */${totalSize}` },
-    })
-    if (checkRes.status === 308) {
-      const range = checkRes.headers.get('Range')
-      if (range) {
-        offset = parseInt(range.split('-')[1]) + 1
-        onProgress(offset / totalSize)
-      }
-    }
-  } catch (_) { /* start from beginning */ }
-
-  while (offset < totalSize) {
-    const end   = Math.min(offset + CHUNK_SIZE, totalSize)
-    const chunk = file.slice(offset, end)
-
-    let attempts = 0
-    let success  = false
-
-    while (attempts < 3 && !success) {
-      try {
-        const res = await fetch(uploadUrl, {
-          method:  'PUT',
-          headers: {
-            'Content-Range': `bytes ${offset}-${end - 1}/${totalSize}`,
-            'Content-Type':  file.type || 'video/mp4',
-          },
-          body: chunk,
-        })
-
-        // 200/201 = complete, 308 = chunk accepted, more to come
-        if (res.status === 200 || res.status === 201 || res.status === 308) {
-          offset  = end
-          success = true
-          onProgress(offset / totalSize)
-        } else {
-          throw new Error(`Unexpected status ${res.status}`)
-        }
-      } catch (err) {
-        attempts++
-        if (attempts >= 3) throw new Error(`Upload failed after 3 attempts: ${err.message}`)
-        await delay(1000 * attempts) // back off before retry
-      }
-    }
   }
 }

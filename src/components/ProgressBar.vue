@@ -5,7 +5,7 @@
       <!-- Animated VHS cassette split loader -->
       <VhsLoader :visible="visible" />
 
-      <p class="progress-label">&gt; {{ isUploading ? 'UPLOADING' : 'SPLITTING' }}</p>
+      <p class="progress-label">&gt; PROCESSING</p>
 
       <ProgressBar
         :value="pct"
@@ -26,10 +26,9 @@ import ProgressBar from 'primevue/progressbar'
 import VhsLoader  from './VhsLoader.vue'
 
 defineProps({
-  visible:     { type: Boolean, default: false },
-  pct:         { type: Number,  default: 0 },
-  msg:         { type: String,  default: 'INITIALISING...' },
-  isUploading: { type: Boolean, default: false },
+  visible: { type: Boolean, default: false },
+  pct:     { type: Number,  default: 0 },
+  msg:     { type: String,  default: 'INITIALISING...' },
 })
 </script>
 
