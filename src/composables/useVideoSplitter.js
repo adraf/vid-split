@@ -1,12 +1,13 @@
 import { ref, readonly } from 'vue'
 import { delay } from '../utils/format'
 
-export const DEFAULT_CHUNK_SEC = 240 // iMessage 4 min default
+export const DEFAULT_CHUNK_SEC = 240
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:8080'
+const CHUNK_SIZE  = 5 * 1024 * 1024 // 5MB chunks for resumable upload
 
 export function useVideoSplitter() {
-  const status      = ref('idle')   // idle | uploading | processing | done | error
+  const status      = ref('idle')
   const progressPct = ref(0)
   const progressMsg = ref('')
   const error       = ref(null)
@@ -15,7 +16,7 @@ export function useVideoSplitter() {
   let currentJobId = null
 
   function setProgress(pct, msg = null) {
-    progressPct.value = pct
+    progressPct.value = Math.min(100, Math.round(pct))
     if (msg !== null) progressMsg.value = msg
   }
 
@@ -32,28 +33,36 @@ export function useVideoSplitter() {
     } catch (_) {}
 
     try {
-      // Step 1: Upload
-      setProgress(0, 'UPLOADING VIDEO...')
-      const formData = new FormData()
-      formData.append('video', file)
+      // ── Step 1: Get resumable upload URL from our server ──────────────────
+      setProgress(0, 'PREPARING UPLOAD...')
 
-      const uploadRes = await fetchWithProgress(
-        `${SERVER_URL}/upload`,
-        formData,
-        (pct) => setProgress(Math.round(pct * 60), 'UPLOADING VIDEO...')
-      )
+      const urlRes = await fetch(`${SERVER_URL}/upload-url`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          filename:    file.name,
+          contentType: file.type || 'video/mp4',
+        }),
+      })
 
-      if (!uploadRes.ok) {
-        const err = await uploadRes.json()
-        throw new Error(err.error || 'Upload failed')
+      if (!urlRes.ok) {
+        const err = await urlRes.json()
+        throw new Error(err.error || 'Failed to get upload URL')
       }
 
-      const { jobId, gcsInput } = await uploadRes.json()
+      const { jobId, gcsInput, uploadUrl } = await urlRes.json()
       currentJobId = jobId
 
-      // Step 2: Process
+      // ── Step 2: Upload directly to GCS in chunks (resumable) ─────────────
+      // Each chunk is 5MB — if the connection drops, GCS can resume
+      setProgress(2, 'UPLOADING VIDEO...')
+      await resumableUpload(file, uploadUrl, (pct) => {
+        setProgress(2 + pct * 0.58, 'UPLOADING VIDEO...')
+      })
+
+      // ── Step 3: Tell server to process the uploaded file ──────────────────
       status.value = 'processing'
-      setProgress(65, 'SPLITTING VIDEO...')
+      setProgress(62, 'SPLITTING VIDEO...')
 
       const processRes = await fetch(`${SERVER_URL}/process`, {
         method:  'POST',
@@ -155,25 +164,59 @@ export function useVideoSplitter() {
   }
 }
 
-function fetchWithProgress(url, formData, onProgress) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    xhr.open('POST', url)
+// ── Resumable chunked upload to GCS ──────────────────────────────────────────
+// Uploads the file in 5MB pieces directly to GCS resumable upload URL.
+// If a chunk fails it retries up to 3 times before giving up.
+async function resumableUpload(file, uploadUrl, onProgress) {
+  const totalSize = file.size
+  let offset      = 0
 
-    xhr.upload.addEventListener('progress', (e) => {
-      if (e.lengthComputable) onProgress(e.loaded / e.total)
+  // Check if there's already progress on this upload (resume support)
+  try {
+    const checkRes = await fetch(uploadUrl, {
+      method:  'PUT',
+      headers: { 'Content-Range': `bytes */${totalSize}` },
     })
+    if (checkRes.status === 308) {
+      const range = checkRes.headers.get('Range')
+      if (range) {
+        offset = parseInt(range.split('-')[1]) + 1
+        onProgress(offset / totalSize)
+      }
+    }
+  } catch (_) { /* start from beginning */ }
 
-    xhr.addEventListener('load', () => {
-      resolve({
-        ok:   xhr.status >= 200 && xhr.status < 300,
-        json: () => Promise.resolve(JSON.parse(xhr.responseText)),
-      })
-    })
+  while (offset < totalSize) {
+    const end   = Math.min(offset + CHUNK_SIZE, totalSize)
+    const chunk = file.slice(offset, end)
 
-    xhr.addEventListener('error', () => reject(new Error('Network error during upload')))
-    xhr.addEventListener('abort', () => reject(new Error('Upload aborted')))
+    let attempts = 0
+    let success  = false
 
-    xhr.send(formData)
-  })
+    while (attempts < 3 && !success) {
+      try {
+        const res = await fetch(uploadUrl, {
+          method:  'PUT',
+          headers: {
+            'Content-Range': `bytes ${offset}-${end - 1}/${totalSize}`,
+            'Content-Type':  file.type || 'video/mp4',
+          },
+          body: chunk,
+        })
+
+        // 200/201 = complete, 308 = chunk accepted, more to come
+        if (res.status === 200 || res.status === 201 || res.status === 308) {
+          offset  = end
+          success = true
+          onProgress(offset / totalSize)
+        } else {
+          throw new Error(`Unexpected status ${res.status}`)
+        }
+      } catch (err) {
+        attempts++
+        if (attempts >= 3) throw new Error(`Upload failed after 3 attempts: ${err.message}`)
+        await delay(1000 * attempts) // back off before retry
+      }
+    }
+  }
 }
